@@ -1,0 +1,4 @@
+For the algorithm, we use a combination of k-max and k-min search. We use k-min to find the minimum price, the k-max
+to find the maximum one to sell the stock.
+
+We should assume that k -> \infty
