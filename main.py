@@ -10,5 +10,5 @@ class Agent:
         self.rpp = RPP(k, min_price, max_price)
         self.own_share = False
 
-    
+
 
