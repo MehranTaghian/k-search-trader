@@ -22,10 +22,10 @@ class RPP:
             self.r_star = fsolve(self.r_star_func, guess)[0]
             self.s_star = fsolve(self.s_star_func, guess)[0]
 
-        r_star_error = self.r_star_func([self.r_star])
-        s_star_error = self.s_star_func([self.s_star])
-        assert r_star_error > 1e-5, f"Couldn't find a good solution for r*! Current error is {r_star_error}"
-        assert s_star_error > 1e-5, f"Couldn't find a good solution for s*! Current error is {s_star_error}"
+        r_star_error = self.r_star_func([self.r_star])[0]
+        s_star_error = self.s_star_func([self.s_star])[0]
+        assert abs(r_star_error) < 1e-2, f"Couldn't find a good solution for r*! Current error is {r_star_error}"
+        assert abs(s_star_error) < 1e-2, f"Couldn't find a good solution for s*! Current error is {s_star_error}"
 
     def get_pi_max(self, i):
         return self.min_price * (1 + (self.r_star - 1) * np.power(1 + self.r_star / self.k, i - 1))

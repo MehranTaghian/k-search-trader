@@ -6,7 +6,7 @@ class DataForPatternBasedAgent(Data):
     def __init__(self, data, patterns, action_name, device, gamma, n_step=4, batch_size=50, transaction_cost=0.0):
         """
         This class uses the original patterns extracted using the rules in the preprocessing step. You can find these
-        rules in the ../PatternDetectionInCandleStick/LabelPatterns.py
+        rules in the ../Evaluation/LabelPatterns.py
         @param data:
             which is of type DataLoader.data_train or DataLoader.data_test and is a data-frame
         @param patterns:
