@@ -15,17 +15,18 @@ class RPP:
         self.phi = max_price / min_price
 
         if k == np.infty:
-            self.r_star = 1 + lambertw((self.phi - 1) / np.e)
-            self.s_star = 1 / (lambertw(- (self.phi - 1) / (np.e * self.phi)) + 1)
+            self.r_star = (1 + lambertw((self.phi - 1) / np.e)).real
+            self.s_star = (1 / (lambertw(- (self.phi - 1) / (np.e * self.phi)) + 1)).real
         else:
-            guess = np.random.randn()
+            guess = np.random.randn() * 100
             self.r_star = fsolve(self.r_star_func, guess)[0]
             self.s_star = fsolve(self.s_star_func, guess)[0]
 
+        print(f"r*: {self.r_star}, s*: {self.s_star}")
         r_star_error = self.r_star_func([self.r_star])[0]
         s_star_error = self.s_star_func([self.s_star])[0]
-        assert abs(r_star_error) < 1e-2, f"Couldn't find a good solution for r*! Current error is {r_star_error}"
-        assert abs(s_star_error) < 1e-2, f"Couldn't find a good solution for s*! Current error is {s_star_error}"
+        assert abs(r_star_error) < 1e-5, f"Couldn't find a good solution for r*! Current error is {r_star_error}"
+        assert abs(s_star_error) < 1e-5, f"Couldn't find a good solution for s*! Current error is {s_star_error}"
 
     def get_pi_max(self, i):
         return self.min_price * (1 + (self.r_star - 1) * np.power(1 + self.r_star / self.k, i - 1))

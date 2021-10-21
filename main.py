@@ -17,32 +17,43 @@ class Agent:
         self.i_min = 1
 
     def trade(self):
+        k_iteration = self.rpp.k
         for i in range(len(self.prices)):
             reserved_price_max = self.rpp.get_pi_max(self.i_max)
             reserved_price_min = self.rpp.get_pi_min(self.i_min)
 
+            print(f"Iteration {i}: RPP_max: {reserved_price_max}, RPP_min: {reserved_price_min}")
+
             if self.prices[i] >= reserved_price_max:
                 self.i_max += 1
                 self.buy_sell('sell', i)
-            if self.prices[i] <= reserved_price_min:
+                k_iteration -= 1
+            elif self.prices[i] <= reserved_price_min:
                 self.i_min += 1
                 self.buy_sell('buy', i)
+                k_iteration -= 1
+            else:
+                self.buy_sell('None', i)
+
+            if k_iteration == 0:
+                break
 
     def buy_sell(self, action, index):
-        if action == 'buy' and not self.own_share:
-            self.data['action'][index] = action
-            self.own_share = True
-        elif action == 'sell' and self.own_share:
-            self.data['action'][index] = action
-            self.own_share = False
-        else:
-            self.data['action'][index] = 'None'
+        self.data['action'][index] = action
+        # if action == 'buy' and not self.own_share:
+        #     self.data['action'][index] = action
+        #     self.own_share = True
+        # elif action == 'sell' and self.own_share:
+        #     self.data['action'][index] = action
+        #     self.own_share = False
+        # else:
+        #     self.data['action'][index] = 'None'
 
 
 if __name__ == '__main__':
     data_loader = YahooFinanceDataLoader('BTC-USD', split_point='2018-01-01', load_from_file=True)
-    k = 100000
-    agent = Agent(data_loader, k, data_kind='test')
+    k = 100
+    agent = Agent(data_loader, k, data_kind='teste')
     agent.trade()
     eval = Evaluation(agent.data, 'action', initial_investment=1000)
     eval.evaluate()
