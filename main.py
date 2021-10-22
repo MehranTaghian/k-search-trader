@@ -8,9 +8,10 @@ class Agent:
     def __init__(self, data_loader, k, data_kind='train'):
         self.data = data_loader.data_train if data_kind == 'train' else data_loader.data_test
         self.data['action'] = 'None'
-        self.prices = np.array(data_loader.data_train.open)
+        self.prices = np.array(data_loader.data_train.close)
         min_price = np.min(self.prices)
         max_price = np.max(self.prices)
+
         self.rpp = RPP(k, min_price, max_price)
         self.own_share = False
         self.i_max = 1
@@ -22,10 +23,12 @@ class Agent:
             reserved_price_max = self.rpp.get_pi_max(self.i_max)
             reserved_price_min = self.rpp.get_pi_min(self.i_min)
 
-            print(f"Iteration {i}: RPP_max: {reserved_price_max}, RPP_min: {reserved_price_min}")
+            # print(f"Iteration {i}: RPP_max: {reserved_price_max}, RPP_min: {reserved_price_min}")
 
+            # print(self.prices[i])
             if self.prices[i] >= reserved_price_max:
                 self.i_max += 1
+                # print("yes bigger")
                 self.buy_sell('sell', i)
                 k_iteration -= 1
             elif self.prices[i] <= reserved_price_min:
@@ -52,8 +55,12 @@ class Agent:
 
 if __name__ == '__main__':
     data_loader = YahooFinanceDataLoader('BTC-USD', split_point='2018-01-01', load_from_file=True)
-    k = 100
-    agent = Agent(data_loader, k, data_kind='teste')
-    agent.trade()
-    eval = Evaluation(agent.data, 'action', initial_investment=1000)
-    eval.evaluate()
+    k_list = [10, 100, 1000, 10000]
+    for k in range(500):
+        try:
+            agent = Agent(data_loader, k, data_kind='test')
+            agent.trade()
+            eval = Evaluation(agent.data, 'action', initial_investment=1000)
+            print(eval.get_daily_portfolio_value()[-1])
+        except AssertionError as ae:
+            print(ae)

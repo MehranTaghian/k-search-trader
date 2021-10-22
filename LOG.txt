@@ -1,0 +1,3 @@
+1) whether consider the open or close prices
+2) do an HP search over k
+3) limit the number of buys and sells to k
