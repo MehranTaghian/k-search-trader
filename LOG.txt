@@ -1,3 +1,7 @@
 1) whether consider the open or close prices
 2) do an HP search over k
 3) limit the number of buys and sells to k
+4) Change the rpp as follows:
+    Assume that you buy initial_investment of a share in the beginning and then try to sell k of that in different
+    time steps.
+5) In contrast, you can buy some share and calculate the portfolio in the end
