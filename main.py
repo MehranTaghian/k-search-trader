@@ -8,6 +8,7 @@ import pandas as pd
 import argparse
 import torch
 import os
+import numpy as np
 from tqdm import tqdm
 
 parser = argparse.ArgumentParser(description='Trader arguments')
@@ -103,7 +104,25 @@ def plot_results(portfolios, data_loader):
     ax.set(xlabel='Time', ylabel='%Rate of Return')
     ax.set_title(f'Analyzing the performance of portfolios')
     plt.legend()
-    fig_file = os.path.join(plot_path, args.dataset_name + '.jpg')
+    fig_file = os.path.join(plot_path, args.dataset_name + '_profit.jpg')
+    plt.savefig(fig_file, dpi=300)
+
+    sns.set(rc={'figure.figsize': (12, 6)})
+    sns.set_palette(sns.color_palette("Paired", 15))
+
+    fig = plt.figure(figsize=(12, 6))
+
+    # Calculate sharpe ratio
+    sharp_ratios = {}
+    for key, val in portfolios.items():
+        returns = np.array(val[1:]) - np.array(val[:-1])
+        sharp_ratios[key] = np.mean(returns) / np.std(returns)
+
+    plt.bar(list(sharp_ratios.keys()), list(sharp_ratios.values()))
+    plt.xlabel('Model')
+    plt.ylabel('Sharpe Ratio')
+    plt.title(f'Analyzing the performance of portfolios using sharpe ratio')
+    fig_file = os.path.join(plot_path, args.dataset_name + '_sharpe.jpg')
     plt.savefig(fig_file, dpi=300)
 
 
@@ -115,56 +134,55 @@ if __name__ == '__main__':
     device = torch.device("cuda" if args.cuda and torch.cuda.is_available() else "cpu")
     feature_size = 64
     target_update = 5
-
     gamma = 0.9
     batch_size = 16
-    replay_memory_size_default = 32
+    replay_memory_size = 32
 
     data_loader = DATA_LOADERS[dataset_name]
 
     portfolios = {}
 
-    k = 10
-    for k in tqdm(range(1, 50)):
+    for k in tqdm(range(1, 100)):
         try:
             agent = rppAgent(data_loader, k, experiment_path=experiment_path, data_kind=test_type)
             agent.trade()
             agent.plot_strategy()
             portfolios['rpp_sell_' + str(k)] = agent.calculate_portfolio_sell()
             portfolios['rpp_buy_' + str(k)] = agent.calculate_portfolio_buy()
-            print(k, portfolios['rpp_sell_' + str(k)][-1])
-            print(k, portfolios['rpp_buy_' + str(k)][-1])
+            # print(k, portfolios['rpp_sell_' + str(k)][-1])
+            # print(k, portfolios['rpp_buy_' + str(k)][-1])
         except AssertionError as ae:
             pass
 
-    # data_train_dqn = \
-    #     DqnData(data=data_loader.data_train,
-    #             action_name='action_dqn',
-    #             device=device,
-    #             gamma=gamma,
-    #             n_step=n_step,
-    #             batch_size=batch_size)
-    #
-    # data_test_dqn = \
-    #     DqnData(data=data_loader.data_test,
-    #             action_name='action_dqn',
-    #             device=device,
-    #             gamma=gamma,
-    #             n_step=n_step,
-    #             batch_size=batch_size)
-    #
-    # dqn = dqnAgent(data_loader,
-    #                data_train_dqn,
-    #                data_test_dqn,
-    #                dataset_name,
-    #                BATCH_SIZE=30,
-    #                GAMMA=0.7,
-    #                ReplayMemorySize=50,
-    #                TARGET_UPDATE=5,
-    #                n_step=10)
-    #
+    data_train_dqn = \
+        DqnData(data=data_loader.data_train,
+                action_name='action_dqn',
+                device=device,
+                gamma=gamma,
+                n_step=n_step,
+                batch_size=batch_size)
+
+    data_test_dqn = \
+        DqnData(data=data_loader.data_test,
+                action_name='action_dqn',
+                device=device,
+                gamma=gamma,
+                n_step=n_step,
+                batch_size=batch_size)
+
+    dqn = dqnAgent(data_loader,
+                   data_train_dqn,
+                   data_test_dqn,
+                   dataset_name,
+                   device,
+                   BATCH_SIZE=batch_size,
+                   GAMMA=gamma,
+                   ReplayMemorySize=replay_memory_size,
+                   TARGET_UPDATE=target_update,
+                   n_step=n_step)
+
     # dqn.train(n_episodes)
-    # dqn_eval = dqn.test(test_type=test_type)
-    # portfolios['dqn'] = dqn_eval.get_daily_portfolio_value()
+    dqn_eval = dqn.test(test_type=test_type)
+    portfolios['dqn'] = dqn_eval.get_daily_portfolio_value()
 
     plot_results(portfolios, data_loader)

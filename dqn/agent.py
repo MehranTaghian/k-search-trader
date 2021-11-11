@@ -3,8 +3,6 @@ import torch.optim as optim
 from .model import DQN
 from .base import BaseTrain
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
 
 class Agent(BaseTrain):
     def __init__(self,
@@ -12,6 +10,7 @@ class Agent(BaseTrain):
                  data_train,
                  data_test,
                  dataset_name,
+                 device,
                  BATCH_SIZE=30,
                  GAMMA=0.7,
                  ReplayMemorySize=50,
@@ -43,6 +42,7 @@ class Agent(BaseTrain):
                                     data_test,
                                     dataset_name,
                                     'DeepRL',
+                                    device,
                                     BATCH_SIZE,
                                     GAMMA,
                                     ReplayMemorySize,
