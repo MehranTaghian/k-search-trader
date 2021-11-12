@@ -82,8 +82,6 @@ class Agent:
         current_cash = self.initial_cash
         num_shares = 0
 
-        print(current_cash)
-
         for i in range(1, len(self.prices)):
             if self.data['rpp_action'][i] == 'buy':
                 current_cash -= unit_asset
@@ -95,13 +93,18 @@ class Agent:
 
     def plot_strategy(self):
         sns.set(rc={'figure.figsize': (15, 7)})
-        sns.set_palette(sns.color_palette("Paired", 15))
+        # sns.set_palette(sns.color_palette("Paired", 15))
+        plt.figure(figsize=(15, 7))
         x_buy = np.arange(len(self.prices)) * self.buy_indices
         x_sell = np.arange(len(self.prices)) * self.sell_indices
         y_buy = self.prices * self.buy_indices
         y_sell = self.prices * self.sell_indices
 
         plt.plot(self.prices, color='b', alpha=0.2)
-        plt.scatter(x_buy[y_buy != 0], y_buy[y_buy != 0], color='g')
-        plt.scatter(x_sell[y_sell != 0], y_sell[y_sell != 0], color='r')
+        plt.scatter(x_buy[y_buy != 0], y_buy[y_buy != 0], color='g', label='buy')
+        plt.scatter(x_sell[y_sell != 0], y_sell[y_sell != 0], color='r', label='sell')
+        plt.xlabel('Day')
+        plt.ylabel('Price')
+        plt.title('Buy and Sell signals produced by RPP algorithm')
+        plt.legend()
         plt.savefig(self.experiment_path + f'/rpp_{self.rpp.k}.jpg', dpi=300)

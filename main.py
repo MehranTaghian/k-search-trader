@@ -81,11 +81,33 @@ def plot_results(portfolios, data_loader):
     if not os.path.exists(plot_path):
         os.makedirs(plot_path)
 
-    sns.set(rc={'figure.figsize': (15, 7)})
-    sns.set_palette(sns.color_palette("Paired", 15))
+    plot_portfolios(data_loader, plot_path, portfolios)
+    plot_sharpe_ratio(plot_path, portfolios)
 
+
+def plot_sharpe_ratio(plot_path, portfolios):
+    sns.set(rc={'figure.figsize': (12, 6)})
+    # sns.set_palette(sns.color_palette("Paired", 15))
+    plt.figure(figsize=(12, 6))
+    # Calculate sharpe ratio
+    sharp_ratios = {}
+    for key, val in portfolios.items():
+        returns = np.array(val[1:]) - np.array(val[:-1])
+        sharp_ratios[key] = np.mean(returns) / np.std(returns)
+    plt.bar(list(sharp_ratios.keys()), list(sharp_ratios.values()))
+    plt.xlabel('Model')
+    plt.ylabel('Sharpe Ratio')
+    plt.title(f'Analyzing the performance of portfolios using sharpe ratio')
+    fig_file = os.path.join(plot_path, args.dataset_name + '_sharpe.jpg')
+    plt.savefig(fig_file, dpi=300)
+
+
+def plot_portfolios(data_loader, plot_path, portfolios):
+    sns.set(rc={'figure.figsize': (15, 7)})
+    # sns.set_palette(sns.color_palette("Paired", 15))
     first = True
     ax = None
+
     for model_name in portfolios.keys():
         profit_percentage = [
             (portfolios[model_name][i] - portfolios[model_name][0]) /
@@ -100,30 +122,19 @@ def plot_results(portfolios, data_loader):
         else:
             ax = df.plot(x='date', y='portfolio', label=model_name)
             first = False
-
     ax.set(xlabel='Time', ylabel='%Rate of Return')
     ax.set_title(f'Analyzing the performance of portfolios')
     plt.legend()
     fig_file = os.path.join(plot_path, args.dataset_name + '_profit.jpg')
     plt.savefig(fig_file, dpi=300)
 
-    sns.set(rc={'figure.figsize': (12, 6)})
-    sns.set_palette(sns.color_palette("Paired", 15))
 
-    fig = plt.figure(figsize=(12, 6))
-
-    # Calculate sharpe ratio
-    sharp_ratios = {}
-    for key, val in portfolios.items():
-        returns = np.array(val[1:]) - np.array(val[:-1])
-        sharp_ratios[key] = np.mean(returns) / np.std(returns)
-
-    plt.bar(list(sharp_ratios.keys()), list(sharp_ratios.values()))
-    plt.xlabel('Model')
-    plt.ylabel('Sharpe Ratio')
-    plt.title(f'Analyzing the performance of portfolios using sharpe ratio')
-    fig_file = os.path.join(plot_path, args.dataset_name + '_sharpe.jpg')
-    plt.savefig(fig_file, dpi=300)
+def get_buy_and_hold_portfolio(data_loader, test_type):
+    data = data_loader.data_train if test_type == 'train' else data_loader.data_test
+    data['buy&hold'] = 'None'
+    data['buy&hold'][0] = 'buy'
+    eval = Eval(data, 'buy&hold', 1000)
+    return eval.get_daily_portfolio_value()
 
 
 if __name__ == '__main__':
@@ -140,19 +151,40 @@ if __name__ == '__main__':
 
     data_loader = DATA_LOADERS[dataset_name]
 
+    # data_loader.plot_data()
+
     portfolios = {}
+    portfolios_buy_rpp = {}
+    portfolios_sell_rpp = {}
 
     for k in tqdm(range(1, 100)):
         try:
             agent = rppAgent(data_loader, k, experiment_path=experiment_path, data_kind=test_type)
             agent.trade()
             agent.plot_strategy()
-            portfolios['rpp_sell_' + str(k)] = agent.calculate_portfolio_sell()
-            portfolios['rpp_buy_' + str(k)] = agent.calculate_portfolio_buy()
-            # print(k, portfolios['rpp_sell_' + str(k)][-1])
-            # print(k, portfolios['rpp_buy_' + str(k)][-1])
+            portfolios_buy_rpp[k] = agent.calculate_portfolio_buy()
+            portfolios_sell_rpp[k] = agent.calculate_portfolio_sell()
         except AssertionError as ae:
             pass
+
+    # find best performing buy-rpp
+    best_portfolio_buy = None
+    best_k_buy = None
+    for k in portfolios_buy_rpp.keys():
+        if best_portfolio_buy is None or portfolios_buy_rpp[k][-1] > best_portfolio_buy[-1]:
+            best_portfolio_buy = portfolios_buy_rpp[k]
+            best_k_buy = k
+
+    # find best performing buy-rpp
+    best_portfolio_sell = None
+    best_k_sell = None
+    for k in portfolios_sell_rpp.keys():
+        if best_portfolio_sell is None or portfolios_sell_rpp[k][-1] > best_portfolio_sell[-1]:
+            best_portfolio_sell = portfolios_sell_rpp[k]
+            best_k_sell = k
+
+    portfolios[f'rpp_{best_k_buy}_buy'] = best_portfolio_buy
+    portfolios[f'rpp_{best_k_sell}_sell'] = best_portfolio_sell
 
     data_train_dqn = \
         DqnData(data=data_loader.data_train,
@@ -181,8 +213,11 @@ if __name__ == '__main__':
                    TARGET_UPDATE=target_update,
                    n_step=n_step)
 
-    # dqn.train(n_episodes)
+    dqn.train(n_episodes)
     dqn_eval = dqn.test(test_type=test_type)
     portfolios['dqn'] = dqn_eval.get_daily_portfolio_value()
+
+    # add buy & hold agent
+    portfolios['buy&hold'] = get_buy_and_hold_portfolio(data_loader, test_type)
 
     plot_results(portfolios, data_loader)
