@@ -1,5 +1,6 @@
 import numpy as np
-from scipy import stats
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 
 class Eval:
@@ -257,7 +258,7 @@ class Eval:
                 num_shares = 0
 
             elif (action == 'None' or action == 'buy') and num_shares > 0:  # hold shares and get profit
-                profit = arithmetic_return[i] * portfolio_value[len(portfolio_value) - 1]
+                profit = arithmetic_return[i] * portfolio_value[-1]
                 portfolio_value.append(portfolio_value[-1] + profit)
 
             elif (action == 'sell' or action == 'None') and num_shares == 0:
@@ -283,3 +284,36 @@ class Eval:
             elif self.data.iloc[i][human_actions] != 'None' and self.data.iloc[i][agent_actions] != 'None':
                 total += 1
         return match / total
+
+    def plot_strategy(self, experiment_path):
+        sns.set(rc={'figure.figsize': (15, 7)})
+        # sns.set_palette(sns.color_palette("Paired", 15))
+        plt.figure(figsize=(15, 7))
+        prices = self.data.close
+
+        buy_indices = np.zeros(len(prices))
+        buy_indices[self.data.index[self.data[self.action_label] == 'buy'].tolist()] = 1
+        x_buy = np.arange(len(prices)) * buy_indices
+        y_buy = prices * buy_indices
+
+        sell_indices = np.zeros(len(prices))
+        sell_indices[self.data.index[self.data[self.action_label] == 'sell'].tolist()] = 1
+        x_sell = np.arange(len(prices)) * sell_indices
+        y_sell = prices * sell_indices
+
+        none_indices = np.zeros(len(prices))
+        none_indices[self.data.index[self.data[self.action_label] == 'None'].tolist()] = 1
+        x_none = np.arange(len(prices)) * none_indices
+        y_none = prices * none_indices
+
+        plt.plot(prices, color='b', alpha=0.2)
+        plt.scatter(x_buy[y_buy != 0], y_buy[y_buy != 0], color='g', label='buy')
+        plt.plot(prices, color='b', alpha=0.2)
+        plt.scatter(x_sell[y_sell != 0], y_sell[y_sell != 0], color='r', label='sell')
+        plt.plot(prices, color='b', alpha=0.2)
+        plt.scatter(x_none[y_none != 0], y_none[y_none != 0], color='y', label='none')
+        plt.xlabel('Day')
+        plt.ylabel('Price')
+        plt.title('Signals produced by DQN algorithm')
+        plt.legend()
+        plt.savefig(experiment_path + f'/dqn_strategy.jpg', dpi=300)

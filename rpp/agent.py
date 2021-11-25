@@ -6,8 +6,8 @@ import seaborn as sns
 
 
 class Agent:
-    def __init__(self, data_loader, k, experiment_path, data_kind='train', initial_cash=1000):
-        self.data = data_loader.data_train if data_kind == 'train' else data_loader.data_test
+    def __init__(self, data, k, experiment_path, initial_cash_buy=1000, initial_cash_sell=1000):
+        self.data = data
         self.data['rpp_action'] = 'None'
         self.prices = np.array(self.data.close)
         self.buy_indices = np.zeros(self.prices.shape[0])
@@ -23,10 +23,10 @@ class Agent:
         self.experiment_path = os.path.join(experiment_path, 'rpp')
 
         # assume buying at the beginning to sell gradually
-        self.num_shares_sell = initial_cash / self.prices[0]
+        self.num_shares_sell = initial_cash_sell / self.prices[0]
 
         # assume not buying anything to buy gradually
-        self.initial_cash = initial_cash
+        self.initial_cash_buy = initial_cash_buy
 
         if not os.path.exists(self.experiment_path):
             os.makedirs(self.experiment_path)
@@ -68,7 +68,7 @@ class Agent:
         current_cash = 0
 
         for i in range(1, len(self.prices)):
-            if self.data['rpp_action'][i] == 'sell':
+            if self.data['rpp_action'].iloc[i] == 'sell':
                 current_cash += unit_share * self.prices[i]
                 num_shares -= unit_share
 
@@ -77,13 +77,12 @@ class Agent:
         return portfolio
 
     def calculate_portfolio_buy(self):
-        unit_asset = self.initial_cash / self.rpp.k
-        portfolio = [self.initial_cash]
-        current_cash = self.initial_cash
+        unit_asset = self.initial_cash_buy / self.rpp.k
+        portfolio = [self.initial_cash_buy]
+        current_cash = self.initial_cash_buy
         num_shares = 0
-
         for i in range(1, len(self.prices)):
-            if self.data['rpp_action'][i] == 'buy':
+            if self.data['rpp_action'].iloc[i] == 'buy':
                 current_cash -= unit_asset
                 num_shares += unit_asset / self.prices[i]
 
@@ -91,20 +90,32 @@ class Agent:
 
         return portfolio
 
-    def plot_strategy(self):
+    def plot_strategy_buy(self):
         sns.set(rc={'figure.figsize': (15, 7)})
         # sns.set_palette(sns.color_palette("Paired", 15))
         plt.figure(figsize=(15, 7))
         x_buy = np.arange(len(self.prices)) * self.buy_indices
-        x_sell = np.arange(len(self.prices)) * self.sell_indices
         y_buy = self.prices * self.buy_indices
-        y_sell = self.prices * self.sell_indices
 
         plt.plot(self.prices, color='b', alpha=0.2)
         plt.scatter(x_buy[y_buy != 0], y_buy[y_buy != 0], color='g', label='buy')
+        plt.xlabel('Day')
+        plt.ylabel('Price')
+        plt.title('Buy signals produced by RPP algorithm')
+        plt.legend()
+        plt.savefig(self.experiment_path + f'/rpp_{self.rpp.k}_buy.jpg', dpi=300)
+
+    def plot_strategy_sell(self):
+        sns.set(rc={'figure.figsize': (15, 7)})
+        # sns.set_palette(sns.color_palette("Paired", 15))
+        plt.figure(figsize=(15, 7))
+        x_sell = np.arange(len(self.prices)) * self.sell_indices
+        y_sell = self.prices * self.sell_indices
+
+        plt.plot(self.prices, color='b', alpha=0.2)
         plt.scatter(x_sell[y_sell != 0], y_sell[y_sell != 0], color='r', label='sell')
         plt.xlabel('Day')
         plt.ylabel('Price')
-        plt.title('Buy and Sell signals produced by RPP algorithm')
+        plt.title('Sell signals produced by RPP algorithm')
         plt.legend()
-        plt.savefig(self.experiment_path + f'/rpp_{self.rpp.k}.jpg', dpi=300)
+        plt.savefig(self.experiment_path + f'/rpp_{self.rpp.k}_sell.jpg', dpi=300)
