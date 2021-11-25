@@ -90,7 +90,27 @@ class Agent:
 
         return portfolio
 
-    def plot_strategy_buy(self):
+    def calculate_portfolio_both(self):
+        unit_asset = self.initial_cash_buy / self.rpp.k
+        unit_share = self.num_shares_sell.copy()
+        portfolio = [self.initial_cash_buy]
+        current_cash = self.initial_cash_buy
+        num_shares = 0
+        for i in range(1, len(self.prices)):
+            if self.data['rpp_action'].iloc[i] == 'buy':
+                current_cash -= unit_asset
+                num_shares += unit_asset / self.prices[i]
+            elif self.data['rpp_action'].iloc[i] == 'sell' and num_shares >= unit_share:
+                current_cash += unit_share * self.prices[i]
+                num_shares -= unit_share
+
+            portfolio.append(current_cash + self.prices[i] * num_shares)
+
+        return portfolio
+
+    def plot_strategy_buy(self, file_name=None):
+        if file_name is None:
+            file_name = f'rpp_{self.rpp.k}_whole_buy'
         sns.set(rc={'figure.figsize': (15, 7)})
         # sns.set_palette(sns.color_palette("Paired", 15))
         plt.figure(figsize=(15, 7))
@@ -103,9 +123,11 @@ class Agent:
         plt.ylabel('Price')
         plt.title('Buy signals produced by RPP algorithm')
         plt.legend()
-        plt.savefig(self.experiment_path + f'/rpp_{self.rpp.k}_buy.jpg', dpi=300)
+        plt.savefig(self.experiment_path + f'/{file_name}.jpg', dpi=300)
 
-    def plot_strategy_sell(self):
+    def plot_strategy_sell(self, file_name=None):
+        if file_name is None:
+            file_name = f'rpp_{self.rpp.k}_whole_sell'
         sns.set(rc={'figure.figsize': (15, 7)})
         # sns.set_palette(sns.color_palette("Paired", 15))
         plt.figure(figsize=(15, 7))
@@ -118,4 +140,4 @@ class Agent:
         plt.ylabel('Price')
         plt.title('Sell signals produced by RPP algorithm')
         plt.legend()
-        plt.savefig(self.experiment_path + f'/rpp_{self.rpp.k}_sell.jpg', dpi=300)
+        plt.savefig(self.experiment_path + f'/{file_name}.jpg', dpi=300)

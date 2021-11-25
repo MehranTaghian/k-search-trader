@@ -142,6 +142,7 @@ def get_buy_and_hold_portfolio(data_loader, test_type):
 def rpp_whole_data(data, portfolios, k_max, experiment_path):
     portfolios_buy_rpp = {}
     portfolios_sell_rpp = {}
+    portfolio_both_rpp = {}
     for k in tqdm(range(1, k_max)):
         try:
             agent = rppAgent(data, k, experiment_path=experiment_path)
@@ -150,6 +151,7 @@ def rpp_whole_data(data, portfolios, k_max, experiment_path):
             agent.plot_strategy_sell()
             portfolios_buy_rpp[k] = agent.calculate_portfolio_buy()
             portfolios_sell_rpp[k] = agent.calculate_portfolio_sell()
+            portfolio_both_rpp[k] = agent.calculate_portfolio_both()
         except AssertionError as ae:
             pass
     # find best performing buy-rpp
@@ -166,6 +168,7 @@ def rpp_whole_data(data, portfolios, k_max, experiment_path):
         if best_portfolio_sell is None or portfolios_sell_rpp[k][-1] > best_portfolio_sell[-1]:
             best_portfolio_sell = portfolios_sell_rpp[k]
             best_k_sell = k
+    # TODO best performing both rpp
     portfolios[f'rpp_{best_k_buy}_buy'] = best_portfolio_buy
     portfolios[f'rpp_{best_k_sell}_sell'] = best_portfolio_sell
 
@@ -184,24 +187,29 @@ def rpp_divided_data(data, portfolios, k_max, number_of_intervals, experiment_pa
         portfolios_sell_rpp[k] = []
         initial_investment_buy = initial_cash
         initial_investment_sell = initial_cash
+        interval_index = 1
         for data_i in data_interval:
             try:
                 agent = rppAgent(data_i, k, experiment_path=experiment_path, initial_cash_buy=initial_investment_buy,
                                  initial_cash_sell=initial_investment_sell)
                 agent.trade()
-                agent.plot_strategy_buy()
-                agent.plot_strategy_sell()
+                agent.plot_strategy_buy(file_name=f'rpp_{k}_interval_{interval_index}_buy')
+                agent.plot_strategy_sell(file_name=f'rpp_{k}_interval_{interval_index}_sell')
                 portfolios_buy_rpp[k].extend(agent.calculate_portfolio_buy())
                 portfolios_sell_rpp[k].extend(agent.calculate_portfolio_sell())
 
             except AssertionError as ae:
-                last_portfo_buy = portfolios_buy_rpp[k][-1] if len(portfolios_buy_rpp[k]) > 0 else initial_cash
-                last_portfo_sell = portfolios_sell_rpp[k][-1] if len(portfolios_buy_rpp[k]) > 0 else initial_cash
+                last_portfo_buy = portfolios_buy_rpp[k][-1] if len(
+                    portfolios_buy_rpp[k]) > 0 else initial_investment_buy
                 portfolios_buy_rpp[k].extend([last_portfo_buy for _ in range(len(data_i))])
+
+                last_portfo_sell = portfolios_sell_rpp[k][-1] if len(
+                    portfolios_sell_rpp[k]) > 0 else initial_investment_sell
                 portfolios_sell_rpp[k].extend([last_portfo_sell for _ in range(len(data_i))])
 
             initial_investment_buy = portfolios_buy_rpp[k][-1]
             initial_investment_sell = portfolios_sell_rpp[k][-1]
+            interval_index += 1
     # find best performing buy-rpp
     best_portfolio_buy = None
     best_k_buy = None
