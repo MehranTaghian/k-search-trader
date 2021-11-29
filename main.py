@@ -1,6 +1,7 @@
 from data_loader import YahooFinanceDataLoader, DqnData
 from evaluation import Eval
-from rpp import Agent as rppAgent
+from rpp import SingleAgent as SingleAgentRpp
+from rpp import IntervalAgent as IntervalAgentRpp
 from dqn import Agent as dqnAgent
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -88,9 +89,7 @@ def plot_results(portfolios, data_loader):
 
 
 def plot_sharpe_ratio(plot_path, portfolios):
-    sns.set(rc={'figure.figsize': (12, 6)})
-    # sns.set_palette(sns.color_palette("Paired", 15))
-    plt.figure(figsize=(12, 6))
+    plt.figure(figsize=(18, 16))
     # Calculate sharpe ratio
     sharp_ratios = {}
     for key, val in portfolios.items():
@@ -99,6 +98,8 @@ def plot_sharpe_ratio(plot_path, portfolios):
     plt.bar(list(sharp_ratios.keys()), list(sharp_ratios.values()))
     plt.xlabel('Model')
     plt.ylabel('Sharpe Ratio')
+    plt.xticks(rotation=45)
+    # plt.tight_layout()
     plt.title(f'Analyzing the performance of portfolios using sharpe ratio')
     fig_file = os.path.join(plot_path, args.dataset_name + '_sharpe.jpg')
     plt.savefig(fig_file, dpi=300)
@@ -139,93 +140,48 @@ def get_buy_and_hold_portfolio(data_loader, test_type):
     return eval.get_daily_portfolio_value()
 
 
-def rpp_whole_data(data, portfolios, k_max, experiment_path):
+def find_best_portfolio(portfolios):
+    best_portfolio = None
+    best_k = None
+    for k in portfolios.keys():
+        if best_portfolio is None or portfolios[k][-1] > best_portfolio[-1]:
+            best_portfolio = portfolios[k]
+            best_k = k
+    return best_k, best_portfolio
+
+
+def run_rpp(data, portfolios, k_max, experiment_path, num_intervals=None):
     portfolios_buy_rpp = {}
     portfolios_sell_rpp = {}
-    portfolio_both_rpp = {}
+    portfolios_both_rpp = {}
+    agent_name = None
     for k in tqdm(range(1, k_max)):
-        try:
-            agent = rppAgent(data, k, experiment_path=experiment_path)
-            agent.trade()
+        if num_intervals is None:
+            agent = SingleAgentRpp(data, k, experiment_path=experiment_path)
+        else:
+            agent = IntervalAgentRpp(data, k, num_intervals, experiment_path=experiment_path)
+        if agent_name is None:
+            agent_name = agent.name
+
+        # If the agent could trade anything?
+        if agent.trade():
             agent.plot_strategy_buy()
             agent.plot_strategy_sell()
+            agent.plot_strategy_both()
             portfolios_buy_rpp[k] = agent.calculate_portfolio_buy()
             portfolios_sell_rpp[k] = agent.calculate_portfolio_sell()
-            portfolio_both_rpp[k] = agent.calculate_portfolio_both()
-        except AssertionError as ae:
-            pass
+            portfolios_both_rpp[k] = agent.calculate_portfolio_both()
+
     # find best performing buy-rpp
-    best_portfolio_buy = None
-    best_k_buy = None
-    for k in portfolios_buy_rpp.keys():
-        if best_portfolio_buy is None or portfolios_buy_rpp[k][-1] > best_portfolio_buy[-1]:
-            best_portfolio_buy = portfolios_buy_rpp[k]
-            best_k_buy = k
+    best_k_buy, best_portfolio_buy = find_best_portfolio(portfolios_buy_rpp)
     # find best performing buy-rpp
-    best_portfolio_sell = None
-    best_k_sell = None
-    for k in portfolios_sell_rpp.keys():
-        if best_portfolio_sell is None or portfolios_sell_rpp[k][-1] > best_portfolio_sell[-1]:
-            best_portfolio_sell = portfolios_sell_rpp[k]
-            best_k_sell = k
-    # TODO best performing both rpp
-    portfolios[f'rpp_{best_k_buy}_buy'] = best_portfolio_buy
-    portfolios[f'rpp_{best_k_sell}_sell'] = best_portfolio_sell
+    best_k_sell, best_portfolio_sell = find_best_portfolio(portfolios_sell_rpp)
+    # find best performing both rpp
+    best_k_both, best_portfolio_both = find_best_portfolio(portfolios_both_rpp)
 
-
-def rpp_divided_data(data, portfolios, k_max, number_of_intervals, experiment_path, initial_cash=1000):
-    portfolios_buy_rpp = {}
-    portfolios_sell_rpp = {}
-    interval_length = int(len(data) / number_of_intervals) + 1 if len(data) % number_of_intervals != 0 \
-        else int(len(data) / number_of_intervals)
-    data_interval = []
-    for i in range(number_of_intervals):
-        data_interval.append(data[i * interval_length:(i + 1) * interval_length])
-
-    for k in tqdm(range(1, k_max)):
-        portfolios_buy_rpp[k] = []
-        portfolios_sell_rpp[k] = []
-        initial_investment_buy = initial_cash
-        initial_investment_sell = initial_cash
-        interval_index = 1
-        for data_i in data_interval:
-            try:
-                agent = rppAgent(data_i, k, experiment_path=experiment_path, initial_cash_buy=initial_investment_buy,
-                                 initial_cash_sell=initial_investment_sell)
-                agent.trade()
-                agent.plot_strategy_buy(file_name=f'rpp_{k}_interval_{interval_index}_buy')
-                agent.plot_strategy_sell(file_name=f'rpp_{k}_interval_{interval_index}_sell')
-                portfolios_buy_rpp[k].extend(agent.calculate_portfolio_buy())
-                portfolios_sell_rpp[k].extend(agent.calculate_portfolio_sell())
-
-            except AssertionError as ae:
-                last_portfo_buy = portfolios_buy_rpp[k][-1] if len(
-                    portfolios_buy_rpp[k]) > 0 else initial_investment_buy
-                portfolios_buy_rpp[k].extend([last_portfo_buy for _ in range(len(data_i))])
-
-                last_portfo_sell = portfolios_sell_rpp[k][-1] if len(
-                    portfolios_sell_rpp[k]) > 0 else initial_investment_sell
-                portfolios_sell_rpp[k].extend([last_portfo_sell for _ in range(len(data_i))])
-
-            initial_investment_buy = portfolios_buy_rpp[k][-1]
-            initial_investment_sell = portfolios_sell_rpp[k][-1]
-            interval_index += 1
-    # find best performing buy-rpp
-    best_portfolio_buy = None
-    best_k_buy = None
-    for k in portfolios_buy_rpp.keys():
-        if best_portfolio_buy is None or portfolios_buy_rpp[k][-1] > best_portfolio_buy[-1]:
-            best_portfolio_buy = portfolios_buy_rpp[k]
-            best_k_buy = k
-    # find best performing buy-rpp
-    best_portfolio_sell = None
-    best_k_sell = None
-    for k in portfolios_sell_rpp.keys():
-        if best_portfolio_sell is None or portfolios_sell_rpp[k][-1] > best_portfolio_sell[-1]:
-            best_portfolio_sell = portfolios_sell_rpp[k]
-            best_k_sell = k
-    portfolios[f'rpp_interval_{best_k_buy}_buy'] = best_portfolio_buy
-    portfolios[f'rpp_interval_{best_k_sell}_sell'] = best_portfolio_sell
+    portfolios[f'rpp_{agent_name}_{best_k_buy}_buy'] = best_portfolio_buy
+    portfolios[f'rpp_{agent_name}_{best_k_sell}_sell'] = best_portfolio_sell
+    portfolios[f'rpp_{agent_name}_{best_k_both}_both'] = best_portfolio_both
 
 
 if __name__ == '__main__':
@@ -241,7 +197,7 @@ if __name__ == '__main__':
     batch_size = 16
     replay_memory_size = 32
 
-    number_of_intervals = 10
+    num_intervals = 5
 
     data_loader = DATA_LOADERS[dataset_name]
 
@@ -252,8 +208,8 @@ if __name__ == '__main__':
     data = data_loader.data_train if test_type == 'train' else data_loader.data_test
 
     if test_type == 'test':
-        rpp_whole_data(data, portfolios, k_max, experiment_path)
-        rpp_divided_data(data, portfolios, k_max, number_of_intervals, experiment_path)
+        run_rpp(data, portfolios, k_max, experiment_path, num_intervals)
+        run_rpp(data, portfolios, k_max, experiment_path)
 
     data_train_dqn = \
         DqnData(data=data_loader.data_train,
