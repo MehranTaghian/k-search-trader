@@ -1,7 +1,7 @@
 import warnings
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
-
+import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -115,14 +115,19 @@ class YahooFinanceDataLoader:
         This function is used to plot the dataset (train and test in different colors).
         @return:
         """
-        sns.set(rc={'figure.figsize': (9, 5)})
-        df1 = pd.Series(self.data_train_with_date.close, index=self.data.index)
-        df2 = pd.Series(self.data_test_with_date.close, index=self.data.index)
-        ax = df1.plot(color='b', label='Train')
+        sns.set(rc={'figure.figsize': (12, 5)})
+        df1 = pd.Series(self.data.close, index=self.data.index)
+        df2 = pd.Series(np.where(self.data.index > self.data_train_with_date.index[-1], self.data.close, np.nan),
+                        index=self.data.index)
+        fig, ax = plt.subplots(1, 1)
+        df1.plot(ax=ax, color='b', label='Train')
         df2.plot(ax=ax, color='r', label='Test')
         ax.set(xlabel='Time', ylabel='Close Price')
         ax.set_title(f'Train and Test sections of dataset {self.DATA_NAME}')
+        # ax.tick_params(axis='x', labelrotation=45)
+        fig.autofmt_xdate()
         plt.legend()
+        plt.grid(True)
         plt.savefig(f'{Path(self.DATA_PATH).parent}/DatasetImages/{self.DATA_NAME}.jpg', dpi=300)
 
     def normalize_data(self):
