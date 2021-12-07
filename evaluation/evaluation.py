@@ -1,3 +1,5 @@
+import os.path
+
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -316,4 +318,6 @@ class Eval:
         plt.ylabel('Price')
         plt.title('Signals produced by DQN algorithm')
         plt.legend()
+        if not os.path.exists(experiment_path):
+            os.makedirs(experiment_path)
         plt.savefig(experiment_path + f'/dqn_strategy.jpg', dpi=300)

@@ -32,6 +32,10 @@ DATA_LOADERS = {
                                       split_point='2018-01-01',
                                       load_from_file=True),
 
+    'IBM': YahooFinanceDataLoader('IBM',
+                                  split_point='2016-01-01',
+                                  load_from_file=True),
+
     'GOOGL': YahooFinanceDataLoader('GOOGL',
                                     split_point='2018-01-01',
                                     load_from_file=True),
@@ -78,6 +82,8 @@ DATA_LOADERS = {
 experiment_path = os.path.join(os.path.abspath(os.path.dirname(__file__)),
                                f'Results/{args.dataset_name}/{args.test_type}')
 
+if not os.path.exists(experiment_path):
+    os.makedirs(experiment_path)
 
 def plot_results(portfolios, data_loader):
     plot_path = os.path.join(experiment_path, 'plots')
@@ -203,49 +209,49 @@ if __name__ == '__main__':
 
     data_loader.plot_data()
 
-    # portfolios = {}
-    #
-    # data = data_loader.data_train if test_type == 'train' else data_loader.data_test
-    #
-    # if test_type == 'test':
-    #     run_rpp(data, portfolios, k_max, experiment_path, num_intervals)
-    #     run_rpp(data, portfolios, k_max, experiment_path)
-    #
-    # data_train_dqn = \
-    #     DqnData(data=data_loader.data_train,
-    #             action_name='action_dqn',
-    #             device=device,
-    #             gamma=gamma,
-    #             n_step=n_step,
-    #             batch_size=batch_size)
-    #
-    # data_test_dqn = \
-    #     DqnData(data=data_loader.data_test,
-    #             action_name='action_dqn',
-    #             device=device,
-    #             gamma=gamma,
-    #             n_step=n_step,
-    #             batch_size=batch_size)
-    #
-    # dqn = dqnAgent(data_loader,
-    #                data_train_dqn,
-    #                data_test_dqn,
-    #                dataset_name,
-    #                device,
-    #                BATCH_SIZE=batch_size,
-    #                GAMMA=gamma,
-    #                ReplayMemorySize=replay_memory_size,
-    #                TARGET_UPDATE=target_update,
-    #                n_step=n_step)
-    #
-    # if test_type == 'train':
-    #     dqn.train(n_episodes)
-    # dqn_eval = dqn.test(test_type=test_type)
-    # portfolios['dqn'] = dqn_eval.get_daily_portfolio_value()
-    #
-    # dqn_eval.plot_strategy(experiment_path)
-    #
-    # # add buy & hold agent
-    # portfolios['buy&hold'] = get_buy_and_hold_portfolio(data_loader, test_type)
-    #
-    # plot_results(portfolios, data_loader)
+    portfolios = {}
+
+    data = data_loader.data_train if test_type == 'train' else data_loader.data_test
+
+    if test_type == 'test':
+        run_rpp(data, portfolios, k_max, experiment_path, num_intervals)
+        run_rpp(data, portfolios, k_max, experiment_path)
+
+    data_train_dqn = \
+        DqnData(data=data_loader.data_train,
+                action_name='action_dqn',
+                device=device,
+                gamma=gamma,
+                n_step=n_step,
+                batch_size=batch_size)
+
+    data_test_dqn = \
+        DqnData(data=data_loader.data_test,
+                action_name='action_dqn',
+                device=device,
+                gamma=gamma,
+                n_step=n_step,
+                batch_size=batch_size)
+
+    dqn = dqnAgent(data_loader,
+                   data_train_dqn,
+                   data_test_dqn,
+                   dataset_name,
+                   device,
+                   BATCH_SIZE=batch_size,
+                   GAMMA=gamma,
+                   ReplayMemorySize=replay_memory_size,
+                   TARGET_UPDATE=target_update,
+                   n_step=n_step)
+
+    if test_type == 'train':
+        dqn.train(n_episodes)
+    dqn_eval = dqn.test(test_type=test_type)
+    portfolios['dqn'] = dqn_eval.get_daily_portfolio_value()
+
+    dqn_eval.plot_strategy(experiment_path)
+
+    # add buy & hold agent
+    portfolios['buy&hold'] = get_buy_and_hold_portfolio(data_loader, test_type)
+
+    plot_results(portfolios, data_loader)
