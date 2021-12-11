@@ -1,9 +1,0 @@
-For the algorithm, we use a combination of k-max and k-min search. We use k-min to find the minimum price, the k-max
-to find the maximum one to sell the stock.
-
-We should assume that k -> \infty
-
-The algorithm is a combination of k-min and k-max search. In each iteration of the algorithm, first a share would be
-bought using RPP_min. Also, the i in RPP_max should be checked. If the price was higher than p_i, then i should be
-incremented (but we do not sell). The same is true for RPP_min. If the agent decided to sell and also the
-price was less than p_i in RPP_min, then we assume that we already bought that item and increment i in RPP_min.
